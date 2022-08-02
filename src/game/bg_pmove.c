@@ -1351,7 +1351,7 @@ static void PM_CrashLand(void) {
 	// Nico, end of add no fall damage support
 
 	// start footstep cycle over
-	pm->ps->bobCycle = 0;
+	pm->ps->bobCycle = pm->pmext->bobCycle = 0;
 }
 
 /*
@@ -1649,7 +1649,7 @@ PM_Footsteps
 */
 static void PM_Footsteps(void) {
 	float    bobmove;
-	int      old;
+	float    old;
 	qboolean footstep;
 	int      animResult = -1;
 
@@ -1714,7 +1714,7 @@ static void PM_Footsteps(void) {
 	// if not trying to move
 	if (!pm->cmd.forwardmove && !pm->cmd.rightmove) {
 		if (pm->xyspeed < 5) {
-			pm->ps->bobCycle = 0;   // start at beginning of cycle again
+			pm->ps->bobCycle = pm->pmext->bobCycle = 0;   // start at beginning of cycle again
 		}
 		if (pm->xyspeed > 120) {
 			return; // continue what they were doing last frame, until we stop
@@ -1818,11 +1818,16 @@ static void PM_Footsteps(void) {
 	}
 
 	// check for footstep / splash sounds
-	old              = pm->ps->bobCycle;
-	pm->ps->bobCycle = (int)(old + bobmove * pml.msec) & 255;
+	old                 = pm->pmext->bobCycle;
+	pm->pmext->bobCycle = old + bobmove * pml.msec;
+	pm->ps->bobCycle    = pm->pmext->bobCycle;
+
+	if (pm->ps->bobCycle > 255) {
+		pm->ps->bobCycle = pm->pmext->bobCycle = pm->ps->bobCycle & 255;
+	}
 
 	// if we just crossed a cycle boundary, play an apropriate footstep event
-	if (((old + 64) ^ (pm->ps->bobCycle + 64)) & 128) {
+	if ((((int)old + 64) ^ (pm->ps->bobCycle + 64)) & 128) {
 
 		if (pm->waterlevel == 0) {
 			// on ground will only play sounds if running
