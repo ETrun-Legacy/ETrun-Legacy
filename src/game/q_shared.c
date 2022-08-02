@@ -916,6 +916,10 @@ char *getPhysicsName(char *physicsName, int physicsValue) {
 		sprintf(physicsName, "VET");
 		break;
 
+	case PHYSICS_MODE_LEGACY:
+		sprintf(physicsName, "Legacy mod");
+		break;
+
 	default:
 		sprintf(physicsName, "Unknown");
 		break;
@@ -949,6 +953,10 @@ char *getPhysicsDesc(char *physicsName, int physicsValue) {
 
 	case PHYSICS_MODE_VET:
 		sprintf(physicsName, "VET");
+		break;
+
+	case PHYSICS_MODE_LEGACY:
+		sprintf(physicsName, "Legacy mod");
 		break;
 
 	default:

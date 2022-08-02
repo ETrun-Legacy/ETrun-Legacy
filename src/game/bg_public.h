@@ -59,6 +59,8 @@ If you have questions concerning this license or the applicable additional terms
 # define _attribute(x)
 #endif
 
+#define SPRINTTIME 20000.0f
+
 #define DEFAULT_GRAVITY     800
 
 // Nico, g_speed is now hardcoded as DEFAULT_SPEED
@@ -349,6 +351,7 @@ typedef struct {
 
 	int weapAnimTimer;              // don't change low priority animations until this runs out		//----(SA)	added
 	int silencedSideArm;            // Gordon: Keep track of whether the luger/colt is silenced "in holster", prolly want to do this for the kar98 etc too
+	float sprintTime;
 
 	int airleft;
 
@@ -466,6 +469,7 @@ typedef enum {
 	STAT_XP,                        // Gordon: "realtime" version of xp that doesnt need to go thru the scoreboard
 	STAT_USERCMD_BUTTONS,           // Nico, keys pressed (high byte contains buttons, low byte contains wbuttons)
 	STAT_USERCMD_MOVE,              // Nico, keys pressed (see UMOVE_* for flags)
+	STAT_SPRINTTIME,                // stamina
 } statIndex_t;
 
 // Nico, keys pressed

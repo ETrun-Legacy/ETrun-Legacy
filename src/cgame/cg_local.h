@@ -1033,6 +1033,12 @@ typedef struct {
 	int drawTriggerEntIndexes[MAX_ENTITIES + 1];
 	float drawTriggerDistances[MAX_ENTITIES + 1];
 
+	playerState_t backupStates[MAX_BACKUP_STATES];
+	int backupStateTop;
+	int backupStateTail;
+	int lastPredictedCommand;
+	int lastPhysicsTime;
+
 	// Nico, end of ETrun client variables
 } cg_t;
 
@@ -1371,6 +1377,7 @@ typedef struct {
 	qhandle_t cursorIcon;
 
 	qhandle_t hudPowerIcon;
+	qhandle_t hudSprintIcon;
 	qhandle_t hudHealthIcon;
 
 	qhandle_t pmImages[PM_NUM_TYPES];
@@ -1816,6 +1823,8 @@ extern vmCvar_t cl_waverecording;
 extern vmCvar_t cl_wavefilename;
 extern vmCvar_t cl_waveoffset;
 
+
+extern vmCvar_t cg_optimizePrediction;
 // Nico, beginning of ETrun client cvars
 
 // Game physics

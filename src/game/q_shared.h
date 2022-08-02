@@ -949,7 +949,7 @@ typedef struct playerState_s {
 	int pmove_framecount;
 	int entityEventSequence;
 
-	int sprintExertTime; // Nico, note keep this even if it's unused
+	int sprintExertTime;
 
 	// JPW NERVE -- value for all multiplayer classes with regenerating "class weapons" -- ie LT artillery, medic medpack, engineer build points, etc
 	int classWeaponTime;                // Arnout : DOES get send over the network
@@ -1348,8 +1348,10 @@ typedef enum {
 #define PHYSICS_UPMOVE_BUG_FIX      32
 #define PHYSICS_DOUBLEJUMP          64
 #define PHYSICS_SLICK_CONTROL       128
+#define PHYSICS_STAMINA             256
 
 // Nico, physics mode
+#define PHYSICS_MODE_LEGACY         256
 #define PHYSICS_MODE_AP_NO_OB       255
 #define PHYSICS_MODE_AP_OB          239
 #define PHYSICS_MODE_VQ3_NO_OB      19

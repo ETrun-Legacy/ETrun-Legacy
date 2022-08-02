@@ -1507,6 +1507,12 @@ static void CG_ServerCommand(void) {
 		return;
 	}
 
+	if (!Q_stricmp(cmd, "pmoveoff")) {
+		trap_SendConsoleCommand("set pmove_fixed 0\n");
+		CG_AddPMItem(PM_MESSAGE, va("%s^w: ^npmove_fixed ^dhas been set to ^n0^d.\n", GAME_VERSION_COLORED), cgs.media.voiceChatShader);
+		return;
+	}
+
 	// Nico, pmove_fixed
 	if (!Q_stricmp(cmd, "pmoveon")) {
 		trap_SendConsoleCommand("set pmove_fixed 1\n");

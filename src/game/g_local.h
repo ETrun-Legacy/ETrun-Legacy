@@ -1902,7 +1902,7 @@ qboolean G_CanPickupWeapon(weapon_t weapon, gentity_t *ent);
 #define MAX_PLAYER_FPS_VALUE            999
 #define MAX_PLAYER_PING                 400
 #define MIN_PLAYER_MAX_PACKETS_VALUE    30
-#define MAX_PLAYER_MAX_PACKETS_VALUE    100
+#define MAX_PLAYER_MAX_PACKETS_VALUE    125
 #define FORCED_PLAYER_TIMENUDGE_VALUE   0
 #define MIN_PLAYER_RATE_VALUE           5000
 #define MAX_PLAYER_RATE_VALUE           32000

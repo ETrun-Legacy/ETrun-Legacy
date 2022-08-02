@@ -1447,6 +1447,11 @@ void ClientSpawn(gentity_t *ent) {
 	client->ps.crouchSpeedScale = 0.25;
 	client->ps.weaponstate      = WEAPON_READY;
 
+	if (physics.integer & PHYSICS_STAMINA) {
+		client->ps.stats[STAT_SPRINTTIME] = SPRINTTIME;
+		client->ps.sprintExertTime        = 0;
+	}
+
 	// Rafael
 
 	client->ps.friction = 1.0;

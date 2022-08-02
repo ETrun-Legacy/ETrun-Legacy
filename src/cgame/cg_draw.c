@@ -205,9 +205,9 @@ CG_DrawSnapshot
 ==================
 */
 static float CG_DrawSnapshot(float y) {
-	char *s;
-	int  w;
-	float scale = 0.19f;
+	char   *s;
+	int    w;
+	float  scale = 0.19f;
 	vec4_t color;
 
 	BG_ParseRGBACvar(cg_snapshotColor.string, color);
@@ -241,6 +241,7 @@ static float CG_DrawFPS(float y) {
 	static int previous;
 	int        t, frameTime;
 	vec4_t     color;
+
 	// don't use serverTime, because that will be drifting to
 	// correct for internet lag changes, timescales, timedemos, etc
 	t         = trap_Milliseconds();
@@ -358,8 +359,8 @@ static void CG_DrawChat(void) {
 		return; // disabled
 	}
 
-	x     = CG_WideX(cg_chatX.value);
-	y     = cg_chatY.value;
+	x         = CG_WideX(cg_chatX.value);
+	y         = cg_chatY.value;
 	chatTextX = x + 0.25f * TINYCHAR_WIDTH;
 
 	if (cgs.teamLastChatPos != cgs.teamChatPos) {
@@ -1401,7 +1402,7 @@ CG_DrawSpectatorMessage
 static void CG_DrawSpectatorMessage(void) {
 	const char *str2;
 	static int lastconfigGet = 0;
-	float      scale     = 0.15f, x, y;
+	float      scale = 0.15f, x, y;
 	vec4_t     color;
 
 	if (!cg_drawSpectatorMessage.integer) {
@@ -1891,12 +1892,12 @@ static int CG_PlayerAmmoValue(int *ammo, int *clips, int *akimboammo) {
 }
 
 static void CG_DrawPlayerAmmo(void) {
-	int       value, value2, value3, w;
-	float     scale;
-	float     x = CG_WideX(SCREEN_WIDTH) - 22;
-	float     y = 474;
-	char      buffer[32];
-	vec4_t    color;
+	int    value, value2, value3, w;
+	float  scale;
+	float  x = CG_WideX(SCREEN_WIDTH) - 44;
+	float  y = 474;
+	char   buffer[32];
+	vec4_t color;
 
 	if (!cg_drawPlayerAmmo.integer) {
 		return;
@@ -1904,21 +1905,21 @@ static void CG_DrawPlayerAmmo(void) {
 
 	BG_ParseRGBACvar(cg_playerAmmoColor.string, color);
 	CG_PlayerAmmoValue(&value, &value2, &value3);
-	
-	x += CG_WideX(cg_playerAmmoXoffset.value);
-	y += cg_playerAmmoYoffset.value;
+
+	x    += CG_WideX(cg_playerAmmoXoffset.value);
+	y    += cg_playerAmmoYoffset.value;
 	scale = 0.25f;
 
 	if (value3 >= 0) {
-		Com_sprintf(buffer, sizeof(buffer), "%i|%i/%i", value3, value, value2);
+		Com_sprintf(buffer, sizeof (buffer), "%i|%i/%i", value3, value, value2);
 		w = CG_Text_Width_Ext(buffer, scale, 0, &cgs.media.limboFont1);
 		CG_Text_Paint_Ext(x - w, y, scale, scale, color, buffer, 0, 0, ITEM_TEXTSTYLE_SHADOWED, &cgs.media.limboFont1);
 	} else if (value2 >= 0) {
-		Com_sprintf(buffer, sizeof(buffer), "%i/%i", value, value2);
+		Com_sprintf(buffer, sizeof (buffer), "%i/%i", value, value2);
 		w = CG_Text_Width_Ext(buffer, scale, 0, &cgs.media.limboFont1);
 		CG_Text_Paint_Ext(x - w, y, scale, scale, color, buffer, 0, 0, ITEM_TEXTSTYLE_SHADOWED, &cgs.media.limboFont1);
 	} else if (value >= 0) {
-		Com_sprintf(buffer, sizeof(buffer), "%i", value);
+		Com_sprintf(buffer, sizeof (buffer), "%i", value);
 		w = CG_Text_Width_Ext(buffer, scale, 0, &cgs.media.limboFont1);
 		CG_Text_Paint_Ext(x - w, y, scale, scale, color, buffer, 0, 0, ITEM_TEXTSTYLE_SHADOWED, &cgs.media.limboFont1);
 	}
@@ -1927,10 +1928,10 @@ static void CG_DrawPlayerAmmo(void) {
 static void CG_DrawPlayerHealthBar(void) {
 	vec4_t bgcolour = { 1.f, 1.f, 1.f, 0.3f };
 	vec4_t colour;
-	float  x = 4; // Nico, 24 -> 4
-	float  y = SCREEN_HEIGHT - 92;
-	int    w = 12;
-	int    h = 72;
+	float  x     = 4; // Nico, 24 -> 4
+	float  y     = SCREEN_HEIGHT - 92;
+	int    w     = 12;
+	int    h     = 72;
 	int    flags = 1 | 4 | 16 | 64;
 	float  frac;
 
@@ -1957,13 +1958,56 @@ static void CG_DrawPlayerHealthBar(void) {
 	CG_DrawPic(x, y + h + 4, w, w, cgs.media.hudHealthIcon);
 }
 
+static void CG_DrawStaminaBar() {
+	int    x, y, w, h;
+	int    flags     = 1 | 4 | 16 | 64;
+	float  frac      = cg.pmext.sprintTime / (float)SPRINTTIME;
+	vec4_t bgcolour  = { 1.f, 1.f, 1.f, 0.3f };
+	vec4_t colour    = { 0.1f, 1.0f, 0.1f, 0.5f };
+	vec4_t colourlow = { 1.0f, 0.1f, 0.1f, 0.5f };
+	vec_t  *color    = colour;
+
+	if (!(physics.integer & PHYSICS_STAMINA)) {
+		return;
+	}
+
+	x = CG_WideX(SCREEN_WIDTH) - 16;
+	y = SCREEN_HEIGHT - 92;
+	w = 12;
+	h = 72;
+
+	if (cg.snap->ps.powerups[PW_ADRENALINE]) {
+		if (cg.snap->ps.pm_flags & PMF_FOLLOW) {
+			Vector4Average(colour, colorWhite, sin(cg.time * .005f), colour);
+		} else {
+			float msec = cg.snap->ps.powerups[PW_ADRENALINE] - cg.time;
+
+			if (msec < 0) {
+				msec = 0;
+			} else {
+				Vector4Average(colour, colorWhite, .5f + sin(.2f * sqrt(msec) * 2 * M_PI) * .5f, colour);
+			}
+		}
+	} else {
+		if (frac < 0.25) {
+			color = colourlow;
+		}
+	}
+
+	CG_FilledBar(x, y + (h * 0.1f), w, h * 0.84f, color, NULL, bgcolour, frac, flags);
+
+	trap_R_SetColor(NULL);
+	CG_DrawPic(x, y, w, h, cgs.media.hudSprintBar);
+	CG_DrawPic(x, y + h + 4, w, w, cgs.media.hudSprintIcon);
+}
+
 static void CG_DrawWeapRecharge(void) {
 	float  barFrac, chargeTime;
-	int    flags = 1 | 4 | 16;
-	float  x = CG_WideX(SCREEN_WIDTH) - 16;
-	float  y = SCREEN_HEIGHT - 92;
-	int    w = 12;
-	int    h = 72;
+	int    flags   = 1 | 4 | 16;
+	float  x       = CG_WideX(SCREEN_WIDTH) - 30;
+	float  y       = SCREEN_HEIGHT - 92;
+	int    w       = 12;
+	int    h       = 72;
 	vec4_t bgcolor = { 1.0f, 1.0f, 1.0f, 0.25f };
 	vec4_t color;
 
@@ -2020,6 +2064,7 @@ static void CG_DrawPlayerStatus(void) {
 
 	CG_DrawPlayerAmmo();
 	CG_DrawPlayerHealthBar();
+	CG_DrawStaminaBar();
 	CG_DrawWeapRecharge();
 }
 
@@ -2035,8 +2080,8 @@ static void CG_DrawPlayerStats(void) {
 		return;
 	}
 
-	x += CG_WideX(cg_playerStatsXoffset.value);
-	y += cg_playerStatsYoffset.value;
+	x  += CG_WideX(cg_playerStatsXoffset.value);
+	y  += cg_playerStatsYoffset.value;
 	str = va("%i", cg.snap->ps.stats[STAT_HEALTH]);
 	w   = CG_Text_Width_Ext(str, 0.25f, 0, &cgs.media.limboFont1);
 
@@ -2287,8 +2332,8 @@ static void CG_Autodemo() {
 				CG_Printf("%s^w: ^dStopping and saving demo...\n", GAME_VERSION_COLORED);
 			}
 			cg.stoppingAndSavingDemo = qtrue;
-			cg.rs_time = cg.time;
-			cg.rs_keep = 1;
+			cg.rs_time               = cg.time;
+			cg.rs_keep               = 1;
 		}
 
 		if (cg.time > cg.rs_time + AUTODEMO_RUN_SAVE_DELAY + etr_autoDemoStopDelay.integer && cg.rs_keep == 1 && !cg.startedNewDemo) {
@@ -2332,7 +2377,7 @@ static void CG_Autodemo() {
 			}
 
 			cg.stoppingAndSavingDemo = qfalse;
-			cg.lastSavingDemoTime = cg.time;
+			cg.lastSavingDemoTime    = cg.time;
 
 			cg.runsave = cg.rs_keep = 0;
 		}
