@@ -1353,6 +1353,7 @@ G_ScriptAction_Wait
 qboolean G_ScriptAction_Wait(gentity_t *ent, char *params) {
 	char *pString, *token;
 	int  duration;
+	int  frametime = level.time - level.previousTime;
 
 	// get the duration
 	pString = params;
@@ -1377,6 +1378,12 @@ qboolean G_ScriptAction_Wait(gentity_t *ent, char *params) {
 		}
 		max = atoi(token);
 
+		// match wait time to sv_fps 20
+		if (frametime < 50) {
+			min = min + 50 - (min % 50) - frametime;
+			max = max + 50 - (max % 50) - frametime;
+		}
+
 		if (ent->scriptStatus.scriptStackChangeTime + min > level.time) {
 			return qfalse;
 		}
@@ -1389,6 +1396,12 @@ qboolean G_ScriptAction_Wait(gentity_t *ent, char *params) {
 	}
 
 	duration = atoi(token);
+
+	// match wait time to sv_fps 20
+	if (frametime < 50) {
+		duration = duration + 50 - (duration % 50) - frametime;
+	}
+
 	return (ent->scriptStatus.scriptStackChangeTime + duration < level.time);
 }
 
