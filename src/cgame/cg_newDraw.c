@@ -68,7 +68,7 @@ CG_DrawPlayerWeaponIcon
 */
 void CG_DrawPlayerWeaponIcon(int align, vec4_t *refcolor) {
 	int       size, realweap;
-	int       rx = CG_WideX(SCREEN_WIDTH + cg_playerWeaponIconXoffset.value) - 82;
+	int       rx = CG_WideX(SCREEN_WIDTH + cg_playerWeaponIconXoffset.value) - 96;
 	int       ry = SCREEN_HEIGHT - 56 + cg_playerWeaponIconYoffset.value;
 	int       rw = 60;
 	int       rh = 32;
@@ -184,15 +184,15 @@ CG_DrawCursorHints
 ==============
 */
 void CG_DrawCursorhint(void) {
-	int       h = 48;
-	int       w = 48;
-	int       x = 0.5f * SCREEN_WIDTH - 0.5f * w;
-	int       y = 260;
+	int       h      = 48;
+	int       w      = 48;
+	int       x      = 0.5f * SCREEN_WIDTH - 0.5f * w;
+	int       y      = 260;
 	float     middle = x + cgs.wideXoffset;
 	float     *color;
 	float     scale, halfscale;
 	qboolean  yellowbar = qfalse;
-	qhandle_t icon = 0;
+	qhandle_t icon      = 0;
 
 	if (!cg_cursorHints.integer || cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR) {
 		return;
@@ -403,10 +403,10 @@ CG_DrawWeapStability
 ==============
 */
 void CG_DrawWeapStability(void) {
-	int x = 50;
-	int y = 208;
-	int w = 10;
-	int h = 64;
+	int    x = 50;
+	int    y = 208;
+	int    w = 10;
+	int    h = 64;
 	vec4_t goodColor = { 0, 1, 0, 0.5f }, badColor = { 1, 0, 0, 0.5f };
 
 	if (!cg_drawSpreadScale.integer || cg.snap->ps.persistant[PERS_TEAM] == TEAM_SPECTATOR) {

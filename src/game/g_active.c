@@ -945,10 +945,16 @@ Collection of checks for invalid cvar values
 */
 void G_CheckVars(gentity_t *ent) {
 	gclient_t *client = ent->client;
-	int varsSet = 0;
+	int       varsSet = 0;
+
+	if (physics.integer == PHYSICS_MODE_LEGACY && client->pers.pmoveFixed) {
+		CP(va("cpm \"%s^w: ^dYou must use ^npmove_fixed 0^d.\n\"", GAME_VERSION_COLORED));
+		trap_SendServerCommand(ent - g_entities, "pmoveoff");
+		varsSet++;
+	}
 
 	// Nico, pmove_fixed
-	if (!client->pers.pmoveFixed) {
+	if (physics.integer != PHYSICS_MODE_LEGACY && !client->pers.pmoveFixed) {
 		CP(va("cpm \"%s^w: ^dYou must use ^npmove_fixed 1^d.\n\"", GAME_VERSION_COLORED));
 		trap_SendServerCommand(ent - g_entities, "pmoveon");
 		varsSet++;

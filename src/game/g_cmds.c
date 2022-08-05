@@ -2091,18 +2091,26 @@ void Cmd_Load_f(gentity_t *ent) {
 	}
 
 	if (pos->valid) {
-		// Nico, stop timer on load for VET except if strict save/load mode is disabled
-		if (ent->client->sess.timerunActive && (physics.integer != PHYSICS_MODE_VET || g_strictSaveLoad.integer)) {
+		// Nico, stop timer on load for VET and Legacy except if strict save/load mode is disabled
+		if (ent->client->sess.timerunActive && ((physics.integer != PHYSICS_MODE_VET && physics.integer != PHYSICS_MODE_LEGACY) || g_strictSaveLoad.integer)) {
 			// Nico, notify the client and its spectators the timerun has stopped
 			notify_timerun_stop(ent, 0);
 
 			ent->client->sess.timerunActive = qfalse;
 		}
 
-		// suburb, clear broken legs knockback state in vet for either strict save mode or while not in a run
-		if (physics.integer == PHYSICS_MODE_VET && (g_strictSaveLoad.integer || !ent->client->sess.timerunActive)) {
+		// suburb, clear broken legs knockback state in vet and Legacy for either strict save mode or while not in a run
+		if ((physics.integer == PHYSICS_MODE_VET || physics.integer == PHYSICS_MODE_LEGACY) && (g_strictSaveLoad.integer || !ent->client->sess.timerunActive)) {
 			ent->client->ps.pm_time = 1;
 		}
+
+		if (physics.integer & PHYSICS_STAMINA) {
+			ent->client->ps.stats[STAT_SPRINTTIME] = SPRINTTIME;
+			ent->client->ps.sprintExertTime        = 0;
+		}
+
+		// toggle the teleport bit so the client knows to not lerp
+		ent->client->ps.eFlags ^= EF_TELEPORT_BIT;
 
 		VectorCopy(pos->origin, ent->client->ps.origin);
 
@@ -2139,7 +2147,7 @@ void Cmd_Load_f(gentity_t *ent) {
 		trap_SendServerCommand(ent - g_entities, "tempDemoStart");
 
 		// suburb, reset anti-bugging variable
-		ent->client->pers.loadKillNeeded = qfalse;
+		ent->client->pers.loadKillNeeded             = qfalse;
 		ent->client->pers.triggerUsePreventedPrinted = qfalse;
 	} else {
 		CP("cp \"^dUse ^nsave ^dfirst\n\"");
@@ -2176,32 +2184,32 @@ void Cmd_Save_f(gentity_t *ent) {
 
 	// suburb, only do these checks if logged in, making logged out state more convenient
 	if (ent->client->sess.logged) {
-		// Nico, allow save in the air for VET
-		if (physics.integer != PHYSICS_MODE_VET && ent->client->ps.groundEntityNum == ENTITYNUM_NONE) {
+		// Nico, allow save in the air for VET and Legacy
+		if ((physics.integer != PHYSICS_MODE_VET && physics.integer != PHYSICS_MODE_LEGACY) && ent->client->ps.groundEntityNum == ENTITYNUM_NONE) {
 			CP("cp \"^dYou can not ^nsave ^dwhile in the air\n\"");
 			return;
 		}
 
-		// Nico, allow save while proning for VET
-		if (physics.integer != PHYSICS_MODE_VET && (ent->client->ps.eFlags & EF_PRONE || ent->client->ps.eFlags & EF_PRONE_MOVING)) {
+		// Nico, allow save while proning for VET and Legacy
+		if ((physics.integer != PHYSICS_MODE_VET && physics.integer != PHYSICS_MODE_LEGACY) && (ent->client->ps.eFlags & EF_PRONE || ent->client->ps.eFlags & EF_PRONE_MOVING)) {
 			CP("cp \"^dYou can not ^nsave ^dwhile proning\n\"");
 			return;
 		}
 
-		// Nico, allow save while crouching for VET
-		if (physics.integer != PHYSICS_MODE_VET && ent->client->ps.eFlags & EF_CROUCHING) {
+		// Nico, allow save while crouching for VET and Legacy
+		if ((physics.integer != PHYSICS_MODE_VET && physics.integer != PHYSICS_MODE_LEGACY) && ent->client->ps.eFlags & EF_CROUCHING) {
 			CP("cp \"^dYou can not ^nsave ^dwhile crouching\n\"");
 			return;
 		}
 
-		// suburb, forbid save while proning for VET before starting a run
-		if (physics.integer == PHYSICS_MODE_VET && (ent->client->ps.eFlags & EF_PRONE || ent->client->ps.eFlags & EF_PRONE_MOVING) && !ent->client->sess.timerunActive) {
+		// suburb, forbid save while proning for VET and Legacy before starting a run
+		if ((physics.integer != PHYSICS_MODE_VET && physics.integer != PHYSICS_MODE_LEGACY) && (ent->client->ps.eFlags & EF_PRONE || ent->client->ps.eFlags & EF_PRONE_MOVING) && !ent->client->sess.timerunActive) {
 			CP("cp \"^dYou can not ^nsave ^dwhile proning before starting a run\n\"");
 			return;
 		}
 
-		// suburb, forbid save while crouching for VET before starting a run
-		if (physics.integer == PHYSICS_MODE_VET && ent->client->ps.eFlags & EF_CROUCHING && !ent->client->sess.timerunActive) {
+		// suburb, forbid save while crouching for VET and Legacy before starting a run
+		if ((physics.integer != PHYSICS_MODE_VET && physics.integer != PHYSICS_MODE_LEGACY) && ent->client->ps.eFlags & EF_CROUCHING && !ent->client->sess.timerunActive) {
 			CP("cp \"^dYou can not ^nsave ^dwhile crouching before starting a run\n\"");
 			return;
 		}

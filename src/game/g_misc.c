@@ -105,8 +105,8 @@ void TeleportPlayer(gentity_t *player, vec3_t origin, vec3_t angles) {
 	VectorCopy(origin, player->client->ps.origin);
 	player->client->ps.origin[2] += 1;
 
-	// Nico, Q3-like teleporters for non VET
-	if (physics.integer != PHYSICS_MODE_VET) {
+	// Nico, Q3-like teleporters for non VET and Legacy
+	if (physics.integer != PHYSICS_MODE_VET && physics.integer != PHYSICS_MODE_LEGACY) {
 		AngleVectors(angles, player->client->ps.velocity, NULL, NULL);
 		VectorScale(player->client->ps.velocity, 400, player->client->ps.velocity);
 		player->client->ps.pm_time   = 160;     // hold time

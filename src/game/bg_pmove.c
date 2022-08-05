@@ -370,7 +370,7 @@ static float PM_CmdScale(usercmd_t *cmd, qboolean horizontalOnly) {
 	             + cmd->rightmove * cmd->rightmove + cmd->upmove * cmd->upmove);
 	scale = (float)pm->ps->speed * max / (127.0 * total);
 
-	if (pm->cmd.buttons & BUTTON_SPRINT) {
+	if (((pm->cmd.buttons & BUTTON_SPRINT) && !(pm->physics & PHYSICS_STAMINA)) || ((pm->cmd.buttons & BUTTON_SPRINT) && (pm->physics & PHYSICS_STAMINA) && pm->pmext->sprintTime > 50)) {
 		scale *= pm->ps->sprintSpeedScale;
 	} else {
 		scale *= pm->ps->runSpeedScale;
@@ -993,6 +993,13 @@ static void PM_WalkMove(void) {
 		}
 
 		if (!(pm->cmd.serverTime - pm->pmext->jumpTime < 850)) {
+			if (pm->physics & PHYSICS_STAMINA) {
+				pm->pmext->sprintTime -= 2500;
+				if (pm->pmext->sprintTime < 0) {
+					pm->pmext->sprintTime = 0;
+				}
+			}
+
 			pm->pmext->jumpTime = pm->cmd.serverTime;
 		}
 
@@ -1127,7 +1134,7 @@ static void PM_DeadMove(void) {
 	// extra friction
 
 	forward  = VectorLength(pm->ps->velocity);
-	forward -= 20;
+	forward -= 2500 * pml.frametime;
 	if (forward <= 0) {
 		VectorClear(pm->ps->velocity);
 	} else {
@@ -1344,7 +1351,7 @@ static void PM_CrashLand(void) {
 	// Nico, end of add no fall damage support
 
 	// start footstep cycle over
-	pm->ps->bobCycle = 0;
+	pm->ps->bobCycle = pm->pmext->bobCycle = 0;
 }
 
 /*
@@ -1642,7 +1649,7 @@ PM_Footsteps
 */
 static void PM_Footsteps(void) {
 	float    bobmove;
-	int      old;
+	float    old;
 	qboolean footstep;
 	int      animResult = -1;
 
@@ -1707,7 +1714,7 @@ static void PM_Footsteps(void) {
 	// if not trying to move
 	if (!pm->cmd.forwardmove && !pm->cmd.rightmove) {
 		if (pm->xyspeed < 5) {
-			pm->ps->bobCycle = 0;   // start at beginning of cycle again
+			pm->ps->bobCycle = pm->pmext->bobCycle = 0;   // start at beginning of cycle again
 		}
 		if (pm->xyspeed > 120) {
 			return; // continue what they were doing last frame, until we stop
@@ -1811,11 +1818,16 @@ static void PM_Footsteps(void) {
 	}
 
 	// check for footstep / splash sounds
-	old              = pm->ps->bobCycle;
-	pm->ps->bobCycle = (int)(old + bobmove * pml.msec) & 255;
+	old                 = (float)pm->ps->bobCycle + fmodf(pm->pmext->bobCycle, 1);
+	pm->pmext->bobCycle = old + bobmove * pml.msec;
+	pm->ps->bobCycle    = pm->pmext->bobCycle;
+
+	if (pm->ps->bobCycle > 255) {
+		pm->ps->bobCycle = pm->pmext->bobCycle = pm->ps->bobCycle & 255;
+	}
 
 	// if we just crossed a cycle boundary, play an apropriate footstep event
-	if (((old + 64) ^ (pm->ps->bobCycle + 64)) & 128) {
+	if ((((int)old + 64) ^ (pm->ps->bobCycle + 64)) & 128) {
 
 		if (pm->waterlevel == 0) {
 			// on ground will only play sounds if running
@@ -2320,7 +2332,7 @@ void PM_UpdateViewAngles(playerState_t *ps, pmoveExt_t *pmext, usercmd_t *cmd, v
 			PM_TraceLegs(&traceres, &pmext->proneLegsOffset, ps->origin, ps->origin, NULL, ps->viewangles, pm->trace, ps->clientNum, tracemask);
 
 			// suburb, don't undo yaw if noclipping to get free movement in brushes
-			if (traceres.allsolid && ps->pm_type != PM_NOCLIP/* && trace.entityNum >= MAX_CLIENTS */) {
+			if (traceres.allsolid && ps->pm_type != PM_NOCLIP /* && trace.entityNum >= MAX_CLIENTS */) {
 				// starting in a solid, no space
 				ps->viewangles[YAW]   = oldYaw;
 				ps->delta_angles[YAW] = ANGLE2SHORT(ps->viewangles[YAW]) - cmd->angles[YAW];
@@ -2528,6 +2540,68 @@ void PM_LadderMove(void) {
 }
 
 /*
+==============
+PM_Sprint
+==============
+*/
+void PM_Sprint(void) {
+	if (pm->cmd.buttons & BUTTON_SPRINT && (pm->cmd.forwardmove || pm->cmd.rightmove) && !(pm->ps->pm_flags & PMF_DUCKED) && !(pm->ps->eFlags & EF_PRONE)) {
+		if (pm->ps->powerups[PW_ADRENALINE]) {
+			pm->pmext->sprintTime = SPRINTTIME;
+		} else if (pm->ps->powerups[PW_NOFATIGUE])   {
+			// take time from powerup before taking it from sprintTime
+			pm->ps->powerups[PW_NOFATIGUE] -= 50;
+
+			// go ahead and continue to recharge stamina at double
+			// rate with stamina powerup even when exerting
+			pm->pmext->sprintTime += 10;
+			if (pm->pmext->sprintTime > SPRINTTIME) {
+				pm->pmext->sprintTime = SPRINTTIME;
+			}
+
+			if (pm->ps->powerups[PW_NOFATIGUE] < 0) {
+				pm->ps->powerups[PW_NOFATIGUE] = 0;
+			}
+		}
+		// sprint time tuned for multiplayer
+		else {
+			// adjusted for framerate independence
+			pm->pmext->sprintTime -= 5000 * pml.frametime;
+		}
+
+		if (pm->pmext->sprintTime < 0) {
+			pm->pmext->sprintTime = 0;
+		}
+
+		if (!pm->ps->sprintExertTime) {
+			pm->ps->sprintExertTime = 1;
+		}
+	} else   {
+		// in multiplayer, recharge faster for top 75% of sprint bar
+		// (for people that *just* use it for jumping, not sprint) this code was
+		// mucked about with to eliminate client-side framerate-dependancy in wolf single player
+		if (pm->ps->powerups[PW_ADRENALINE]) {
+			pm->pmext->sprintTime = SPRINTTIME;
+		} else if (pm->ps->powerups[PW_NOFATIGUE])   { // recharge at 2x with stamina powerup
+			pm->pmext->sprintTime += 10;
+		} else   {
+			int rechargebase = 500;
+
+			pm->pmext->sprintTime += rechargebase * pml.frametime;        // adjusted for framerate independence
+			if (pm->pmext->sprintTime > 5000) {
+				pm->pmext->sprintTime += rechargebase * pml.frametime;    // adjusted for framerate independence
+			}
+		}
+
+		if (pm->pmext->sprintTime > SPRINTTIME) {
+			pm->pmext->sprintTime = SPRINTTIME;
+		}
+
+		pm->ps->sprintExertTime = 0;
+	}
+}
+
+/*
 ================
 PmoveSingle
 
@@ -2550,6 +2624,11 @@ void PmoveSingle(pmove_t *pmove) {
 	pm->watertype  = 0;
 	pm->waterlevel = 0;
 
+	if (pm->physics & PHYSICS_STAMINA) {
+		// make server authoritative over stamina
+		pm->pmext->sprintTime = pm->ps->stats[STAT_SPRINTTIME];
+	}
+
 	if (pm->ps->stats[STAT_HEALTH] <= 0) {
 		pm->ps->eFlags &= ~EF_ZOOMING;
 	}
@@ -2562,11 +2641,11 @@ void PmoveSingle(pmove_t *pmove) {
 	if (pm->cmd.forwardmove < -127) {
 		pm->cmd.forwardmove = -127;
 	}
-	
+
 	if (pm->cmd.upmove < -127) { // just in case...
 		pm->cmd.upmove = -127;
 	}
-	
+
 	// Nico, copy pressed keys into playerstate
 	// buttons, wbuttons
 	pm->ps->stats[STAT_USERCMD_BUTTONS]  = pm->cmd.buttons << 8;
@@ -2802,6 +2881,10 @@ void PmoveSingle(pmove_t *pmove) {
 		BG_AnimScriptAnimation(pm->ps, pm->character->animModelInfo, ANIM_MT_IDLE, qtrue);
 	}
 
+	if (pm->physics & PHYSICS_STAMINA) {
+		PM_Sprint();
+	}
+
 	// set groundentity, watertype, and waterlevel
 	PM_GroundTrace();
 	PM_SetWaterLevel();
@@ -2815,8 +2898,38 @@ void PmoveSingle(pmove_t *pmove) {
 	// entering / leaving water splashes
 	PM_WaterEvents();
 
-	// snap some parts of playerstate to save network bandwidth
-	trap_SnapVector(pm->ps->velocity);
+	if (pm->physics == PHYSICS_MODE_LEGACY) {
+		// If fractional part of computed velocity[2] which is based on gravity and frametime
+		// is <0.5 then velocity[2] would be rounded up
+		// add that fractional part to velocity[2] scaled by client real frametime
+		// halt if not going fast enough (0.5 units/sec)
+		if (VectorLengthSquared(pm->ps->velocity) < 0.25f) {
+			VectorClear(pm->ps->velocity);
+		} else {
+			int   fps = 125;
+			float fixedFrametime, fractionalPart, scale, result;
+
+			fixedFrametime = (int)(1000.0f / fps) * 0.001f;
+			fractionalPart = pm->ps->gravity * fixedFrametime;
+			fractionalPart = rint(fractionalPart) - fractionalPart;
+
+			if (fractionalPart < 0) {
+				scale  = fixedFrametime / pml.frametime;
+				result = Q_fabs(fractionalPart) / scale;
+
+				if (Q_fabs(pm->ps->velocity[2] - pml.previous_velocity[2]) > result) {
+					pm->ps->velocity[2] += result;
+				}
+			}
+		}
+	} else   {
+		// snap some parts of playerstate to save network bandwidth
+		trap_SnapVector(pm->ps->velocity);
+	}
+
+	if (pm->physics & PHYSICS_STAMINA) {
+		pm->ps->stats[STAT_SPRINTTIME] = pm->pmext->sprintTime;
+	}
 }
 
 /*
