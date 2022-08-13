@@ -1961,7 +1961,7 @@ static void CG_DrawPlayerHealthBar(void) {
 static void CG_DrawStaminaBar() {
 	int    x, y, w, h;
 	int    flags     = 1 | 4 | 16 | 64;
-	float  frac      = cg.pmext.sprintTime / (float)SPRINTTIME;
+	float  frac      = cg.snap->ps.stats[STAT_SPRINTTIME] / (float)SPRINTTIME;
 	vec4_t bgcolour  = { 1.f, 1.f, 1.f, 0.3f };
 	vec4_t colour    = { 0.1f, 1.0f, 0.1f, 0.5f };
 	vec4_t colourlow = { 1.0f, 0.1f, 0.1f, 0.5f };
