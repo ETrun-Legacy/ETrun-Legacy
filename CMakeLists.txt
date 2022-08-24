@@ -190,6 +190,27 @@ target_link_libraries(qagame mmdb)
 add_definitions(-DMMDB_UINT128_IS_BYTE_ARRAY=1)
 add_dependencies(qagame mmdb)
 
+#--------------
+# Libcurl
+#--------------
+set(CURL_STATICLIB ON)
+set(CURL_ZLIB OFF)
+set(BUILD_SHARED_LIBS OFF)
+add_subdirectory("${PROJECT_SOURCE_DIR}/libs/libcurl")
+target_link_libraries(qagame libcurl)
+add_dependencies(qagame libcurl)
+
+#--------------
+# Json-C
+#--------------
+set(HAVE_STRDUP ON)
+set(DISABLE_WERROR ON)
+set(BUILD_STATIC_LIBS ON)
+set(BUILD_SHARED_LIBS OFF)
+add_subdirectory("${PROJECT_SOURCE_DIR}/libs/json-c")
+target_link_libraries(qagame json-c)
+add_dependencies(qagame json-c)
+
 #-----------------------------------------------------------------
 # Pk3 (inspired from etlegacy https://github.com/etlegacy/etlegacy)
 #-----------------------------------------------------------------

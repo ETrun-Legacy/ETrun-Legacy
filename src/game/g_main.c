@@ -155,6 +155,7 @@ vmCvar_t g_maxNameChanges;
 // API module
 vmCvar_t g_useAPI;
 vmCvar_t g_APImoduleName;
+vmCvar_t g_serverAuthToken;
 
 // Hold doors open
 vmCvar_t g_holdDoorsOpen;
@@ -323,6 +324,7 @@ cvarTable_t gameCvarTable[] =
 	// Cup mode
 	{ &g_cupMode,              "g_cupMode",              "0",                          CVAR_ARCHIVE,                                                  qfalse, qfalse, qfalse },
 	{ &g_cupKey,               "g_cupKey",               "",                           CVAR_ARCHIVE,                                                  qfalse, qfalse, qfalse },
+    { &g_serverAuthToken,      "g_serverAuthToken",      "",                           0,                                                             qfalse, qfalse, qfalse },
 
 	// Timelimit mode
 	{ &g_timelimit,            "timelimit",              "0",                          CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_LATCH,                   qfalse, qfalse, qfalse },

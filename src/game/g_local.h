@@ -1531,6 +1531,7 @@ extern vmCvar_t g_maxNameChanges;
 // API module
 extern vmCvar_t g_useAPI;
 extern vmCvar_t g_APImoduleName;
+extern vmCvar_t g_serverAuthToken;
 
 // Hold doors open
 extern vmCvar_t g_holdDoorsOpen;

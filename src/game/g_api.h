@@ -4,18 +4,33 @@
 #define API_INTERFACE_NAME "API_query"
 #define API_INIT_NAME "API_init"
 #define API_CLEAN_NAME "API_clean"
+#define RESPONSE_CHUNK_SIZE 2048
 #define RESPONSE_MAX_SIZE 4096 // Nico, note: 2048 is too low for maps like shorties
 #define LARGE_RESPONSE_MAX_SIZE 512000 // Nico, for get config
 #define QUERY_MAX_SIZE 1024
 #define CHAR_SEPARATOR "/"
 #define THREADS_MAX 32  // Maximum threads at the same time
 
+typedef struct {
+    char *mapName;
+    gentity_t *ent;
+} recordsRequest_t;
+
+typedef struct {
+    char *result;
+    size_t len;
+    size_t resultLen;
+} requestResult_t;
+
+qboolean G_AsyncCall(void *handler(void *), void *data);
 qboolean G_AsyncAPICall(char *command, char *result, gentity_t *ent, int count, ...);
 qboolean G_SyncAPICall(char *command, char *result, gentity_t *ent, int count, ...);
+size_t curlWriteCallback(char *ptr, size_t size, size_t nmemb, void *requestResult);
 void G_loadAPI();
 void G_unloadAPI();
 qboolean G_API_login(char *result, gentity_t *ent, char *authToken);
 qboolean G_API_mapRecords(char *result, gentity_t *ent, char *mapName);
+qboolean G_API_mapRecordsNew(recordsRequest_t *recordsRequest);
 qboolean G_API_check(char *result, gentity_t *ent);
 qboolean G_API_sendRecord(char *result, gentity_t *ent, char *mapName, char *runName,
                           char *authToken, char *data, char *etrunVersion);

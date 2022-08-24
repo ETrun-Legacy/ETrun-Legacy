@@ -81,33 +81,18 @@ void Cmd_Logout_f(gentity_t *ent) {
 
 // Nico, records command
 void Cmd_Records_f(gentity_t *ent) {
-	char *buf = NULL;
+    recordsRequest_t *recordsRequest = NULL;
 
-	// Check if API is used
-	if (!g_useAPI.integer) {
-		CP("cp \"^dThis command is ^ndisabled ^don this server\n\"");
-		return;
-	}
+    recordsRequest = (recordsRequest_t*)malloc(sizeof(recordsRequest_t));
 
-	// Check cup mode
-	if (g_cupMode.integer != 0) {
-		CP("cp \"^dThis command is ^ndisabled ^din cup mode\n\"");
-		return;
-	}
+    if (recordsRequest) {
+        recordsRequest->ent = ent;
+        recordsRequest->mapName = level.rawmapname;
 
-	buf = malloc(RESPONSE_MAX_SIZE * sizeof (char));
-
-	if (!buf) {
-		LDE("%s\n", "failed to allocate memory");
-
-		return;
-	}
-
-	if (!G_API_mapRecords(buf, ent, level.rawmapname)) {
-		CP(va("print \"%s^w: error while requesting records\n\"", GAME_VERSION_COLORED));
-	}
-
-	// Do *not* free buf here
+        if (!G_API_mapRecordsNew(recordsRequest)) {
+            CP(va("print \"%s^w: error while requesting records\n\"", GAME_VERSION_COLORED));
+        }
+    }
 }
 
 // Nico, load checkpoints command

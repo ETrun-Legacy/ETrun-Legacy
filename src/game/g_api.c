@@ -1,5 +1,7 @@
 #include "g_local.h"
 #include "g_api.h"
+#include <curl/curl.h>
+#include <json.h>
 
 /**
  * Global handles
@@ -273,26 +275,51 @@ qboolean G_API_login(char *result, gentity_t *ent, char *authToken) {
  * Map records handler
  */
 static void *mapRecordsHandler(void *data) {
-	int            code;
-	struct query_s *queryStruct = (struct query_s *)data;
-	gentity_t      *ent         = queryStruct->ent;
+    recordsRequest_t *recordsRequest = (recordsRequest_t *)data;
+    gentity_t *ent = recordsRequest->ent;
+    CURL *curlHandler ;
+    CURLcode ret;
+    requestResult_t requestResult = {.result = NULL, .len = 0, .resultLen = 0};
 
-	code = API_query(queryStruct->cmd, queryStruct->result, queryStruct->query, sizeof (queryStruct->query));
+    char apiHost[64] = "127.0.0.1:8080";
+    char requestUrl[254] = { 0 };
 
-	if (code == 0) {
-		clientBigDataPrint(ent, queryStruct->result);
-	} else {
-		CP(va("print \"%s^w: error while requesting records\n\"", GAME_VERSION_COLORED));
-	}
+    Q_strcat(requestUrl, sizeof (requestUrl), va("%s/records/%s", apiHost, recordsRequest->mapName));
 
-	free(queryStruct->result);
-	free(queryStruct);
+    curlHandler = curl_easy_init();
+    curl_easy_setopt(curlHandler, CURLOPT_URL, requestUrl);
+    requestResult.result = malloc(RESPONSE_CHUNK_SIZE);
+    requestResult.resultLen = RESPONSE_CHUNK_SIZE;
+    curl_easy_setopt(curlHandler, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+    curl_easy_setopt(curlHandler, CURLOPT_WRITEDATA, (void *)&requestResult);
+    ret = curl_easy_perform(curlHandler);
 
-	// Decrease global active thread counter
-	activeThreadsCounter--;
-	G_DPrintf("%s: decreasing threads counter to %d\n", GAME_VERSION, activeThreadsCounter);
+    if (ret == CURLE_OK) {
+        json_object *root = json_tokener_parse(requestResult.result);
+        CP(va("print \"\n  ^3%-50s %-12s %-9s\n\"", "Run name", "Time", "Player"));
+        CP("print \"^7--------------------------------------------------------------------------------------------\n\"");
+        for (unsigned int i = 0; i < json_object_array_length(root); i++) {
+            json_object *runObj = json_object_array_get_idx(root, i);
+            CP(va("print \"  ^4%-50s ^2%-12s ^7%-9s\n\"",
+                  json_object_get_string(json_object_object_get(runObj, "runName")),
+                  json_object_get_string(json_object_object_get(runObj, "time")),
+                  json_object_get_string(json_object_object_get(runObj, "playerName"))
+                  ));
+        }
+    } else {
+        CP(va("print \"%s^w: error while retrieving records\n\"", GAME_VERSION_COLORED));
+    }
 
-	return NULL;
+    curl_easy_cleanup(curlHandler);
+    free(requestResult.result);
+    free(recordsRequest);
+    recordsRequest = NULL;
+
+    // Decrease global active thread counter
+    activeThreadsCounter--;
+    G_DPrintf("%s: decreasing threads counter to %d\n", GAME_VERSION, activeThreadsCounter);
+
+    return NULL;
 }
 
 /**
@@ -311,6 +338,13 @@ qboolean G_API_mapRecords(char *result, gentity_t *ent, char *mapName) {
 	}
 
 	return G_AsyncAPICall("m", result, ent, 3, encodedMapName, cphysics, net_port);
+}
+
+/**
+ * Map records request command
+ */
+qboolean G_API_mapRecordsNew(recordsRequest_t *recordsRequest) {
+	return G_AsyncCall(mapRecordsHandler, recordsRequest);
 }
 
 /**
@@ -920,10 +954,10 @@ qboolean G_AsyncAPICall(char *command, char *result, gentity_t *ent, int count, 
 	va_list        ap;
 	int            i = 0;
 
-	if (api_module == NULL || API_query == NULL) {
-		LDE("%s\n", "API module is not loaded");
-		return qfalse;
-	}
+//	if (api_module == NULL || API_query == NULL) {
+//		LDE("%s\n", "API module is not loaded");
+//		return qfalse;
+//	}
 
 	// Check if thread limit is reached
 	if (activeThreadsCounter >= THREADS_MAX) {
@@ -1024,6 +1058,65 @@ qboolean G_AsyncAPICall(char *command, char *result, gentity_t *ent, int count, 
 	}
 
 	return qtrue;
+}
+
+/**
+ * Asynchronous (using pthreads) API call function
+ *
+ * command: must be a command in apiCommands
+ * result: pointer to an *already allocated* buffer for storing result
+ * ent: entity who made the request
+ * count: number of variadic arguments
+ */
+qboolean G_AsyncCall(void *(*handler)(void *), void *data) {
+    pthread_t      thread;
+    pthread_attr_t attr;
+    int            returnCode = 0;
+    int            i = 0;
+
+    // Check if thread limit is reached
+    if (activeThreadsCounter >= THREADS_MAX) {
+        LDE("threads limit (%d) reached: %d\n", THREADS_MAX, activeThreadsCounter);
+        return qfalse;
+    }
+
+    // Check if we are allowed to start a new thread
+    if (!threadingAllowed) {
+        LDE("%s\n", "starting new threads is forbidden");
+        return qfalse;
+    }
+
+    // Create threads as detached as they will never be joined
+    if (pthread_attr_init(&attr)) {
+        LDE("%s\n", "error in pthread_attr_init");
+        free(data);
+        return qfalse;
+    }
+    if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED)) {
+        LDE("%s\n", "error in pthread_attr_setdetachstate");
+        free(data);
+        return qfalse;
+    }
+
+    returnCode = pthread_create(&thread, &attr, handler, data);
+
+    if (returnCode) {
+        LDE("error in pthread_create, return value is %d\n", returnCode);
+        free(data);
+        return qfalse;
+    }
+
+    // Nico, increase active threads counter
+    activeThreadsCounter++;
+    G_DPrintf("%s: increasing threads counter to %d\n", GAME_VERSION, activeThreadsCounter);
+
+    if (pthread_attr_destroy(&attr)) {
+        LDE("%s\n", "error in pthread_attr_destroy");
+        // Nico, note: I don't free querystruct because it's used in the thread
+        return qfalse;
+    }
+
+    return qtrue;
 }
 
 /**
@@ -1147,4 +1240,23 @@ void G_unloadAPI() {
 
 		G_Printf("%s: API module unloaded!\n", GAME_VERSION);
 	}
+}
+
+size_t curlWriteCallback(char *ptr, size_t size, size_t nmemb, void *requestResult)
+{
+    size_t realsize = size * nmemb;
+    requestResult_t *req = (requestResult_t *) requestResult;
+
+    printf("receive chunk of %zu bytes\n", realsize);
+
+    while (req->resultLen < req->len + realsize + 1)
+    {
+        req->result = realloc(req->result, req->resultLen + RESPONSE_CHUNK_SIZE);
+        req->resultLen += RESPONSE_CHUNK_SIZE;
+    }
+    memcpy(&req->result[req->len], ptr, realsize);
+    req->len += realsize;
+    req->result[req->len] = 0;
+
+    return realsize;
 }
